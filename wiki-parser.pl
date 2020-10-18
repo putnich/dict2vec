@@ -39,18 +39,18 @@ while (<>) {
 
     # convert to lowercase letters and spaces, spell digits
     $_=" $_ ";
-    tr/A-Z/a-z/;
-    s/0/ zero /g;
-    s/1/ one /g;
-    s/2/ two /g;
-    s/3/ three /g;
-    s/4/ four /g;
-    s/5/ five /g;
-    s/6/ six /g;
-    s/7/ seven /g;
-    s/8/ eight /g;
-    s/9/ nine /g;
-    tr/a-z/ /cs;
+    tr/A-ZŠĐŽČĆ/a-zšđžčć/;
+    s/0/ nula /g;
+    s/1/ jedan /g;
+    s/2/ dva /g;
+    s/3/ tri /g;
+    s/4/ četiri /g;
+    s/5/ pet /g;
+    s/6/ šest /g;
+    s/7/ sedam /g;
+    s/8/ osam /g;
+    s/9/ devet /g;
+    tr/a-zšđžčć/ /cs;
     chop;
     print $_;
   }
