@@ -45,9 +45,9 @@ def loadEmbedding(filename, list_words):
     print("   Reading \"{}\" to get the dimension and the number of"
           " words ... ".format(filename), end="")
     nb_word = 0
-    with open(filename) as f:
+    with open(filename, encoding='utf-8') as f:
         first_line = f.readline().split()
-        word, nb_dims = first_line[0], len(first_line[1:])
+        word, nb_dims = first_line[0], first_line[1]
 
         if word in list_words:
             nb_word += 1
@@ -61,13 +61,13 @@ def loadEmbedding(filename, list_words):
           " {} ... ".format(nb_word, nb_dims), end="")
 
     # each row is the embedding of a word
-    embedding = np.zeros((nb_word, nb_dims))
+    embedding = np.zeros((nb_word, int(nb_dims)))
 
     # dictionaries to map each word and their respective index
     numToWords, wordsToNum = {}, {}
 
     # Read again the file to extract embeddings and put them into the matrix
-    with open(filename) as f:
+    with open(filename, encoding='utf-8') as f:
         idx = 0
         for line in f:
             line = line.split()
@@ -111,7 +111,7 @@ def generate_pairs(definition_fn, embedding_fn, strg_fn, weak_fn, K):
     dictionary = {}
     uniq_words = set() # list of all words in definition_file
 
-    with open(definition_fn) as f:
+    with open(definition_fn, encoding='utf-8') as f:
         for line in f:
             ar = line.strip().split()
             # use Counter to take into account the number of occurence
@@ -136,7 +136,7 @@ def generate_pairs(definition_fn, embedding_fn, strg_fn, weak_fn, K):
     print("\n-- Generating strong and weak pairs")
     weak, strong = set(), set()
 
-    nb_words_done = 0;
+    nb_words_done = 0
     for word in dictionary:
         nb_words_done += 1
         if nb_words_done % 100 == 0:
@@ -216,8 +216,8 @@ def generate_pairs(definition_fn, embedding_fn, strg_fn, weak_fn, K):
 
     # write pairs into files
     print("\n\n-- Writing pairs")
-    strg_of = open("{}-K{}.txt".format(strg_fn, K), "w")
-    weak_of = open("{}-K{}.txt".format(weak_fn, K), "w")
+    strg_of = open("{}-K{}.txt".format(strg_fn, K), "w", encoding='utf-8')
+    weak_of = open("{}-K{}.txt".format(weak_fn, K), "w", encoding='utf-8')
 
     for s in strong:
         strg_of.write(' '.join(s) + '\n')
