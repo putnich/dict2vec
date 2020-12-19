@@ -2,7 +2,7 @@
 dict2vec
 
 # text and dictionaries data
-data/enwiki*
+data/shwiki*
 data/strong-pairs.txt
 data/weak-pairs.txt
 
