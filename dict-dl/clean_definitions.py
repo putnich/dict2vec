@@ -32,7 +32,7 @@ def load_vocabulary(fn):
     """Read the file fn and return a set containing all the words
     of the vocabulary."""
     vocabulary = set()
-    with open(fn) as f:
+    with open(fn, encoding='utf-8') as f:
         for line in f:
             vocabulary.add(line.strip())
 
@@ -43,7 +43,7 @@ def clean_defs(definitions, output_file, vocab):
 
     regouped_dictionary = defaultdict(list)
 
-    with open(definitions) as f:
+    with open(definitions, encoding='utf-8') as f:
         for line in f:
             line = line.strip()
             ar = line.split()[1:] # first token is the name of the dictionary
@@ -52,7 +52,7 @@ def clean_defs(definitions, output_file, vocab):
 
     # Regroup together all definitions of a word. Remove words
     # that are not in vocabulary.
-    of = open(output_file, "w")
+    of = open(output_file, "w", encoding='utf-8')
 
     if len(vocab) == 0: # No vocabulary given so no words removed.
         for w in regouped_dictionary:
