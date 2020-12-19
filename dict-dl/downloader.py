@@ -36,7 +36,7 @@ def download_online_recnik(word):
         return defs
     except UnicodeDecodeError:
         return -1
-    except Exception as e:
+    except Exception:
         print("\nERROR: * timeout error.")
         print("       * retry Online recnik -", word)
         return -1
@@ -45,10 +45,11 @@ MAP_DICT = {
     "Ors": download_online_recnik
 }
 
-# STOPSWORD = set()
-# with open('stopwords.txt') as f:
-#     for line in f:
-#         STOPSWORD.add(line.strip().lower())
+STOPSWORD = set()
+with open('dict-dl/stopwords.txt', encoding='utf-8') as f:
+    next(f)
+    for line in f:
+        STOPSWORD.add(line.strip().lower())
 
 
 def download_word_definition(dict_name, word, clean=True):
@@ -64,11 +65,13 @@ def download_word_definition(dict_name, word, clean=True):
         res = []
 
     for definition in res:  # there can be more than one definition fetched
+        # remove abbreviations from the definition
+        definition = re.sub(r'\([^)]*\.\)', '', definition)
         for word in definition.split():
             word = ''.join([c.lower() for c in word
                             if c.isalpha()])
-            # if not word in STOPSWORD:
-            words.append(word)
+            if not word in STOPSWORD:
+                words.append(word)
 
     return words
 
