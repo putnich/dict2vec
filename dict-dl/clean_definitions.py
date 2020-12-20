@@ -71,7 +71,7 @@ def clean_defs(definitions, output_file, vocab):
 
 
 if __name__ == "__main__":
-    dest_fn = "all-definitions-cleaned.txt"
+    dest_fn = "data/all-definitions-cleaned.txt"
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--definitions', help="""file containing the
