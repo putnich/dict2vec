@@ -7,7 +7,9 @@
 # preserved.  Links are converted to normal text.  Digits are spelled out.
 
 # Written by Matt Mahoney, June 10, 2006.  This program is released to the public domain.
-binmode(STDOUT, ":utf8");
+use utf8;
+binmode STDOUT, ":utf8";
+binmode STDIN, ":utf8";
 
 $/=">";                     # input record separator
 while (<>) {
