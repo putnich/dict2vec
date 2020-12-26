@@ -160,9 +160,9 @@ def main(filename):
           not queue_Ors.empty():
 
         # the expected number of fetched words is the number of words
-        # in the vocabulary times 4 because we are using 4 dictionaries.
-        # The number of fetched words is simply the sum of each counter.
-        tmp = sum(request_counter.values()) / (4.0 * vocabulary_size) * 100
+        # in the vocabulary. The number of fetched words is simply the 
+        # sum of each counter.
+        tmp = sum(request_counter.values()) / vocabulary_size * 100
         tmp = int(tmp) + 1
         if tmp != percent:
             print('\r{0}%'.format(tmp))
