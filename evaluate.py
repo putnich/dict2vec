@@ -23,14 +23,18 @@ import os
 import sys
 import math
 import argparse
+import glob
 import numpy as np
 import scipy.stats as st
+import requests
+import bz2
+from bs4 import BeautifulSoup as bs
 
 FILE_DIR = "data/eval/"
 results      = dict()
 missed_pairs = dict()
 missed_words = dict()
-
+imprs        = dict()
 
 def tanimotoSim(v1, v2):
     """Return the Tanimoto similarity between v1 and v2 (numpy arrays)"""
@@ -43,6 +47,55 @@ def cosineSim(v1, v2):
     dotProd = np.dot(v1, v2)
     return dotProd / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
+def make_synonyms():
+    """Download synonyms"""
+    url = 'https://github.com/putnich/sr-sh-nlp/blob/main/SH-Wiktionary/SH-Wiktionary-Synonyms.xml.bz2?raw=true'
+    path = 'data/SH-Wiktionary-Synonyms.xml'
+    synonyms_weak_path = FILE_DIR + 'synonyms-weak.txt'
+    synonyms_strong_path = FILE_DIR + 'synonyms-strong.txt'
+
+    if os.path.exists(synonyms_weak_path) and os.path.exists(synonyms_strong_path):
+        return
+    
+    with open(glob.glob('data/strong-pairs*')[0], 'r', encoding='utf-8') as f:
+        strong_pairs = f.read().split('\n')
+    
+    with open(glob.glob('data/weak-pairs*')[0], 'r', encoding='utf-8') as f:
+        weak_pairs = f.read().split('\n')
+
+    if not os.path.exists(path):
+        result = requests.get(url, allow_redirects=True)
+        obj = bz2.BZ2Decompressor()
+        with open(path, 'wb') as f:
+            f.write(obj.decompress(result.content))
+    
+    """Generate synonyms list"""
+    with open(path, 'r', encoding='utf-8') as f:
+        soup = bs(f.read(), 'html.parser')
+    entries = soup.find_all('entry')
+    synonyms_strong = list()
+    synonyms_weak = list()
+    with open('dict-dl/5000-words.txt', 'r', encoding='utf-8') as f:
+        words = f.read().split('\n')
+    for entry in entries:
+        head = entry.find('orth').text.strip()
+        if not head in words:
+            continue
+        xrs = entry.find_all('xr', {'type': 'synonymy'})
+        for xr in xrs:
+            innerlinks = xr.find_all('innerlink')
+            synonym = ''.join([i.text.strip() for i in innerlinks])
+            if head == synonym:
+                continue
+            pair = head + ' ' + synonym
+            if synonym in words and pair not in synonyms_strong and pair in strong_pairs:
+                synonyms_strong.append(pair)
+            if synonym in words and pair not in synonyms_weak and pair in weak_pairs:
+                synonyms_weak.append(pair)
+    with open(synonyms_strong_path, 'w+', encoding='utf-8') as f:
+        f.write('\n'.join(synonyms_strong))
+    with open(synonyms_weak_path, 'w+', encoding='utf-8') as f:
+        f.write('\n'.join(synonyms_weak))
 
 def init_results():
     """Read the filename for each file in the evaluation directory"""
@@ -50,109 +103,95 @@ def init_results():
         if not filename in results:
             results[filename] = []
 
+def evaluate(filenames):
+    models = dict()
+    for filename in filenames:
+        model = dict()
+        """Compute Cosine similarity per each file and model"""
 
-def evaluate(filename):
-    """Compute Spearman rank coefficient for each evaluation file"""
+        # step 0 : read the first line to get the number of words and the dimension
+        nb_line = 0
+        nb_dims = 0
+        with open(filename, encoding='utf-8') as f:
+            line = f.readline().split()
+            nb_line = int(line[0])
+            nb_dims = int(line[1])
 
-    # step 0 : read the first line to get the number of words and the dimension
-    nb_line = 0
-    nb_dims = 0
-    with open(filename) as f:
-        line = f.readline().split()
-        nb_line = int(line[0])
-        nb_dims = int(line[1])
+        mat = np.zeros((nb_line, nb_dims))
+        wordToNum = {}
+        count = 0
 
-    mat = np.zeros((nb_line, nb_dims))
-    wordToNum = {}
-    count = 0
-
-    with open(filename) as f:
-        f.readline() # skip first line because it does not contains a vector
-        for line in f:
-            line = line.split()
-            word, vals = line[0], list(map(float, line[1:]))
-            # if number of vals is different from nb_dims, bad vector, drop it
-            if len(vals) != nb_dims:
-                continue
-            mat[count] = np.array(vals)
-            wordToNum[word] = count
-            count += 1
-
-    # step 1 : iterate over each evaluation data file and compute spearman
+        with open(filename, encoding='utf-8') as f:
+            f.readline() # skip first line because it does not contains a vector
+            for line in f:
+                line = line.split()
+                word, vals = line[0], list(map(float, line[1:]))
+                # if number of vals is different from nb_dims, bad vector, drop it
+                if len(vals) != nb_dims:
+                    continue
+                mat[count] = np.array(vals)
+                wordToNum[word] = count
+                count += 1
+        model['mat'] = mat
+        model['wordToNum'] = wordToNum
+        models[filename] = model
+    # step 1 : iterate over each evaluation data file and compute cosine
     for filename in results:
         pairs_not_found, total_pairs = 0, 0
         words_not_found, total_words = 0, 0
-        with open(os.path.join(FILE_DIR, filename)) as f:
-            file_similarity = []
-            embedding_similarity = []
+        total_imprs = 0
+        imprs_count = 0
+        with open(os.path.join(FILE_DIR, filename), encoding='utf-8') as f:
             for line in f:
-                w1, w2, val = line.split()
-                w1, w2, val = w1.lower(), w2.lower(), float(val)
+                w1, w2 = line.split()
+                w1, w2 = w1.lower(), w2.lower()
                 total_words += 2
                 total_pairs += 1
-                if not w1 in wordToNum:
-                    words_not_found += 1
-                if not w2 in wordToNum:
-                    words_not_found += 1
+                cosines = list()
+                for key in models.keys():
+                    if not w1 in models[key]['wordToNum']:
+                        words_not_found += 1
+                    if not w2 in models[key]['wordToNum']:
+                        words_not_found += 1
 
-                if not w1 in wordToNum or not w2 in wordToNum:
-                    pairs_not_found += 1
-                else:
-                    v1, v2 = mat[wordToNum[w1]], mat[wordToNum[w2]]
-                    cosine = cosineSim(v1, v2)
-                    file_similarity.append(val)
-                    embedding_similarity.append(cosine)
-
-                    #tanimoto = tanimotoSim(v1, v2)
-                    #file_similarity.append(val)
-                    #embedding_similarity.append(tanimoto)
-
-            rho, p_val = st.spearmanr(file_similarity, embedding_similarity)
-            results[filename].append(rho)
+                    if not w1 in models[key]['wordToNum'] or not w2 in models[key]['wordToNum']:
+                        pairs_not_found += 1
+                    else:
+                        v1, v2 = models[key]['mat'][models[key]['wordToNum'][w1]], models[key]['mat'][models[key]['wordToNum'][w2]]
+                        cosine = cosineSim(v1, v2)
+                        cosines.append(cosine)
+                        #tanimoto = tanimotoSim(v1, v2)
+                        #file_similarity.append(val)
+                        #embedding_similarity.append(tanimoto)
+                if cosines:
+                    total_imprs += int(cosines[1] >= cosines[0])
+                    imprs_count += 1
             missed_pairs[filename] = (pairs_not_found, total_pairs)
             missed_words[filename] = (words_not_found, total_words)
+            imprs[filename]        = (total_imprs, imprs_count)
 
 
 def stats():
     """Compute statistics on results"""
-    title = "{}| {}| {}| {}| {}| {} ".format("Filename".ljust(16),
-                              "AVG".ljust(5), "MIN".ljust(5), "MAX".ljust(5),
-                              "STD".ljust(5), "Missed words/pairs")
+    title = "{}| {}| {} ".format("Filename".ljust(20), "Missed words/pairs".center(20), "Average improvement".rjust(16))
     print(title)
     print("="*len(title))
 
-    weighted_avg = 0
-    total_found  = 0
-
     for filename in sorted(results.keys()):
-        average = sum(results[filename]) / float(len(results[filename]))
-        minimum = min(results[filename])
-        maximum = max(results[filename])
-        std = sum([(results[filename][i] - average)**2 for i in
-                   range(len(results[filename]))])
-        std /= float(len(results[filename]))
-        std = math.sqrt(std)
 
-        # For the weighted average, each file has a weight proportional to the
-        # number of pairs on which it has been evaluated.
-        # pairs evaluated = pairs_found = total_pairs - number of missed pairs
-        pairs_found = missed_pairs[filename][1] - missed_pairs[filename][0]
-        weighted_avg += pairs_found * average
-        total_found  += pairs_found
+        # total amount of the improvement
+        total_imprs = str(round(imprs[filename][0] / imprs[filename][1] * 100, 2))
 
         # ratio = number of missed / total
         ratio_words = missed_words[filename][0] / missed_words[filename][1]
         ratio_pairs = missed_pairs[filename][0] / missed_pairs[filename][1]
-        missed_infos = "{:.0f}% / {:.0f}%".format(
-                round(ratio_words*100), round(ratio_pairs*100))
+        missed_infos = "{:.2f}% / {:.2f}%".format(
+                round(ratio_words*100, 2), round(ratio_pairs*100, 2))
 
-        print("{}| {:.3f}| {:.3f}| {:.3f}| {:.3f}| {} ".format(
-              filename.ljust(16),
-              average, minimum, maximum, std, missed_infos.center(20)))
-
-    print("-"*len(title))
-    print("{0}| {1:.3f}".format("W.Average".ljust(16),
-                                weighted_avg / total_found))
+        print("{}| {}| {}%".format(
+              filename.ljust(20),
+              missed_infos.center(20),
+              total_imprs.rjust(16)))
 
 
 if __name__ == '__main__':
@@ -161,12 +200,11 @@ if __name__ == '__main__':
              description="Evaluate semantic similarities of word embeddings.",
              )
 
-    parser.add_argument('filenames', metavar='FILE', nargs='+',
-                        help='Filename of word embedding to evaluate.')
-
+    parser.add_argument('-w2v', '--word2vec', help="""File containing Word2Vec model.""", required=True)
+    parser.add_argument('-d2v', '--dict2vec', help="""File containing Dict2Vec model.""", required=True)
     args = parser.parse_args()
 
+    make_synonyms()
     init_results()
-    for f in args.filenames:
-        evaluate(f)
+    evaluate([args.word2vec, args.dict2vec])
     stats()
