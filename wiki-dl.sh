@@ -21,14 +21,14 @@
 
 DATA_DIR=./data
 
-#echo "Downloading SH Wikipedia dump of October 2020..."
-URL=https://dumps.wikimedia.org/shwiki/latest/shwiki-latest-pages-articles-multistream.xml.bz2
+#echo "Downloading the SH Wikipedia dump (December 2020)"
+URL=https://dumps.wikimedia.org/shwiki/20201220/shwiki-20201220-pages-articles.xml.bz2
 time wget -qO- $URL | bzip2 -d | perl wiki-parser.pl > "$DATA_DIR/shwiki-full"
 echo "Done."
 echo
 
-echo "Creating shwiki-50M and shwiki-200M..."
-head -c 295988890 "$DATA_DIR/shwiki-full" > "$DATA_DIR/shwiki-50M"
-head -c 1164667415 "$DATA_DIR/shwiki-full" > "$DATA_DIR/shwiki-200M"
+echo "Creating shwiki-10M and shwiki-50M..."
+head -c 65536000 "$DATA_DIR/shwiki-full" > "$DATA_DIR/shwiki-10M"
+head -c 325058560 "$DATA_DIR/shwiki-full" > "$DATA_DIR/shwiki-50M"
 echo "Done."
 echo
