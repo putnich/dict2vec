@@ -27,7 +27,7 @@ with **wget**, **bzip2**, **perl** and **bash** installed.
 Run the code
 ------------
 
-Before running the example script, open `demo-train.sh` and modify the line 62
+Before running the example script, open `demo-train.sh` and modify line 62
 so the variable THREADS is equal to the number of cores in your machine. By
 default, it is equal to 8, so if your machine only has 4 cores, update it to be:
 
@@ -47,9 +47,9 @@ This will:
   * download strong and weak pairs for training
   * compile Dict2vec source code into a binary executable
   * train word embeddings with a dimension of 100
-  * evaluate the embeddings on 11 word similarity datasets
+  * evaluate the embeddings on synonyms
 
-To directly compile the code and interact with the sotfware, run:
+To directly compile the code and interact with the software, run:
 
 ```bash
 $ make
@@ -63,98 +63,29 @@ $ ./dict2vec
 Evaluate word embeddings
 ------------------------
 
-Run `evaluate.py` to evaluate a trained word embedding. Once the evaluation is
-done, you get something like this:
+Run `evaluate.py` to evaluate a trained word embedding. 
+The evaluation is performed on a set of synonyms, parsed from Serbo-Croatian Wiktionary 
+and downloaded as a TEI Lex0 specified XML structure. 
+We load all synonyms but select only those appearing in strong or weak pairs. 
+
+
+Once the evaluation is done, you get something like this:
 
 ```bash
-$ ./evaluate.py embeddings.txt
-Filename        | AVG  | MIN  | MAX  | STD  | Missed words/pairs
-=================================================================
-Card-660.txt    | 0.598| 0.598| 0.598| 0.000|      33% / 50%
-MC-30.txt       | 0.861| 0.861| 0.861| 0.000|       0% / 0%
-MEN-TR-3k.txt   | 0.746| 0.746| 0.746| 0.000|       0% / 0%
-MTurk-287.txt   | 0.648| 0.648| 0.648| 0.000|       0% / 0%
-MTurk-771.txt   | 0.675| 0.675| 0.675| 0.000|       0% / 0%
-RG-65.txt       | 0.860| 0.860| 0.860| 0.000|       0% / 0%
-RW-STANFORD.txt | 0.505| 0.505| 0.505| 0.000|       1% / 2%
-SimLex999.txt   | 0.452| 0.452| 0.452| 0.000|       0% / 0%
-SimVerb-3500.txt| 0.417| 0.417| 0.417| 0.000|       0% / 0%
-WS-353-ALL.txt  | 0.725| 0.725| 0.725| 0.000|       0% / 0%
-WS-353-REL.txt  | 0.637| 0.637| 0.637| 0.000|       0% / 0%
-WS-353-SIM.txt  | 0.741| 0.741| 0.741| 0.000|       0% / 0%
-YP-130.txt      | 0.635| 0.635| 0.635| 0.000|       0% / 0%
------------------------------------------------------------------
-W.Average       | 0.570
+./evaluate.py -w2v "data/w2v.vec" -d2v "data/d2v.vec"
+Filename            |  Missed words/pairs | Average improvement 
+================================================================
+synonyms-strong.txt |   32.20% / 49.60%   |            69.68%
+synonyms-weak.txt   |   33.71% / 57.51%   |            54.67%
 ```
 
-The script computes the Spearman's rank correlation score for some word
-similarity datasets, as well as the OOV rate for each dataset and the weighted
-average based on the number of pairs evaluated on each dataset. We provide the
-evaluation datasets in `data/eval/`.
-
-  * Card-660     (Pilehvar et al., 2018)
-  * MC-30        (Miller and Charles, 1991)
-  * MEN          (Bruni et al., 2014)
-  * MTurk-287    (Radinsky et al., 2011)
-  * MTurk-771    (Halawi et al., 2012)
-  * RG-65        (Rubenstein and Goodenough, 1965)
-  * RW           (Luong et al., 2013)
-  * SimLex-999   (Hill et al., 2014)
-  * SimVerb-3500 (Gerz et al., 2016)
-  * WordSim-353  (Finkelstein et al., 2001)
-  * YP-130       (Yang and Powers, 2006)
-
-This script is also able to evaluate several embeddings files at the same time,
-and compute the average score as well as the standard deviation. To evaluate
-several embeddings, simply add the filenames as arguments:
-
-```bash
-$ ./evaluate.py embedding-1.txt embedding-2.txt embedding-3.txt
-```
-
-This script will report:
-
-  * AVG: the average score of all embeddings for each dataset
-  * MIN: the minimum score of all embeddings for each dataset
-  * MAX: the maximum score of all embeddings for each dataset
-  * STD: the standard deviation score of all embeddings for each dataset
-
-When you evaluate only one embedding, you get the same value for AVG/MIN/MAX and
-a standard deviation STD of 0.
-
-
-Download pre-trained vectors
----------------------------
-
-We provide word embeddings trained with the Dict2vec model on the July 2017
-English version of Wikipedia. Vectors with dimension 100 (resp. 200) were
-trained on the first 50M (resp. 200M) words of this corpus whereas vectors with
-dimension 300 were trained on the full corpus. First line is composed of (number
-of words / dimension). Each following line contains the word and all its space
-separated vector values.
-
-You need to extract the embeddings before using them. Use the following command
-to do so:
-```bash
-$ tar xvjf dict2vec100.tar.bz2
-```
-
-If you use these word embeddings, please cite the paper as explained in section
-[Cite this paper](#cite-this-paper).
-
-  * [dimension 100](https://mega.nz/file/Y0RmyI5S#SlupdHC2R7wMpHYWhaN9wYEKxsxEmZO_7Z-64hHnwqM) (85MB)
-  * [dimension 200](https://mega.nz/file/UowxyBKA#nbiP5Os6GXmk-dGFEZkuj4aS0Uewcd81Z2NWGvcc460) (354MB)
-  * [dimension 300](https://mega.nz/file/Et53UJrB#O4TAagLBgrBRnEi2liWzhOHuAaVsxUqKRfARYgK_n4o) (4.3GB)
+The script computes cosine similarities between synonym pairs using
+both Word2Vec and Dict2Vec. The average improvement gives the percentage 
+of synonym pairs whose similarity score increased when using Dict2Vec. 
 
 
 Download more data
 ------------------
-
-### Definitions
-
-We provide scripts to download online definitions and generate strong/weak pairs
-based on these definitions. More information and full documentation can be found
-[here](dict-dl/).
 
 ### Wikipedia
 
@@ -165,16 +96,17 @@ the paper by running the script `wiki-dl.sh`.
 $ ./wiki-dl.sh
 ```
 
-This script will download the full English Wikipedia dump of November 2018,
+This script will download the full Serbo-Croatian Wikipedia dump of December 2020,
 uncompress it and directly feed it into [Mahoney's parser
 script](http://mattmahoney.net/dc/textdata#appendixa). It also cuts the entire
-dump into two smaller datasets: one containing the first 50M tokens
-(enwiki-50M), and the other one containing the first 200M tokens (enwiki-200M).
+dump into two smaller datasets: one containing the first 10M tokens
+(shwiki-10M), and the other one containing the first 50M tokens (shwiki-50M). 
+The full Wikipedia contains around 130M tokens.
 We report the following filesizes:
 
-  * enwiki-50M: 296MB
-  * enwiki-200M: 1.16GB
-  * enwiki-full: 26GB
+  * shwiki-10M:  65.5MB
+  * shwiki-50M: 325.1MB
+  * shwiki-full: 863.1MB
 
 
 Cite this paper

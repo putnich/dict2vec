@@ -5,10 +5,7 @@ dict-dl is a tool from Dict2vec to download online lexical word definitions, and
 generate strong and weak pairs from these definitions.  The dictionaries used to
 download definitions are :
 
-  * [Cambridge](http://dictionary.cambridge.org/dictionary/english/)
-  * [dictionary.com](http://www.dictionary.com/)
-  * [Oxford](https://en.oxforddictionaries.com/)
-  * [Collins](http://www.collinsdictionary.com/dictionary/english/)
+  * [Online recnik](https://recnik.rs/leksikon/srpski/)
 
 
 Requirements
@@ -25,32 +22,22 @@ Download definitions
 
 To download online definitions, you first need a file containing a list of words
 (one per line). The script will download the definitions for each of these
-words. We provide an example with the file 1000-words.txt.
+words. We provide an example with the file 5000-words.txt.
 
-Then run `download_definitions.txt` with the filename of the file containing the
+Then run `download_definitions.py` with the filename of the file containing the
 list of words, like :
 
 ```bash
-$ ./download_definitions.py 1000-words.txt
+$ ./download_definitions.py 5000-words.txt
 ```
 
-You can specify which POS (part of speech) to download, for example to only
-download the "noun" definitions of words, run :
+At this moment we do not deal with the PoS tag.
 
-```bash
-$ ./download_definitions.py 1000-words.txt -pos NOUN
-```
-
-The different POS available are :
-* `NOUN`
-* `VERB`
-* `ADJECTIVE`
-
-If no POS is given, all the definitions for each word will be downloaded.
+All the definitions for each word will be downloaded,
+regardless of the sense.
 
 This will write all the fetched definitions in the file
-1000-words-definitions.txt (or 1000-words-definitions-noun.txt if you added the
-optional flag `-pos NOUN`). Each line will look like this :
+5000-words-definitions.txt. Each line will look like this :
 
 ```
             XXX     word    def1 def2 def3 def4 def5 def6
@@ -59,10 +46,7 @@ optional flag `-pos NOUN`). Each line will look like this :
 
         1: code representing the dictionary the definition comes from.
 
-                          Cam -> Cambridge
-                          Dic -> dictionary.com
-                          Oxf -> Oxford
-                          Col -> Collins
+                          Ors -> Online recnik
 
         2: the fetched word.
         3: words from the definition. Stopwords have been removed. All words
@@ -73,7 +57,7 @@ It is possible that you see :
 
 ```
 ERROR: * timeout error.
-       * retry Collins - natural
+       * retry Online recnik - natural
 ```
 
 during the execution of the script. This means the server was not able to
@@ -91,7 +75,7 @@ the vocabulary. To clean the definitions (remove words we don't want and
 regroup the 4 definitions together for each word), run :
 
 ```bash
-$ ./clean_definitions.py -d 1000-words-definitions.txt -v vocab.txt
+$ ./clean_definitions.py -d 5000-words-definitions.txt -v 5000-words.txt
 ```
 
 #### Options
@@ -103,7 +87,7 @@ $ ./clean_definitions.py -d 1000-words-definitions.txt -v vocab.txt
                                  vocabulary file
 ```
 
-This will produce a file named all-definitions-cleaned.txt where the first
+This will produce a file named all-definitions-cleaned.txt, where the first
 word of each line is the fetched word, and the rest of the line are the words
 from all its definitions.
 
@@ -111,7 +95,7 @@ from all its definitions.
 Generate strong/weak pairs
 --------------------------
 
-To generate strong and weak pairs, you need a pre-trained word embeddings to
+To generate strong and weak pairs, you need pre-trained word embeddings to
 compute the K closest neighbours (used to form additional strong pairs). Then
 run :
 
